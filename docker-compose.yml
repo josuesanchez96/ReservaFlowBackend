@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: reservaflow-db
+    environment:
+      POSTGRES_USER: reserva
+      POSTGRES_PASSWORD: reserva
+      POSTGRES_DB: reservaflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./db:/db:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reserva -d reservaflow"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: ./app
+    container_name: reservaflow-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # "v1" = versión con cuello de botella | "v2" = versión corregida
+      APP_VERSION: v2
+      DATABASE_URL: postgres://reserva:reserva@db:5432/reservaflow
+      PORT: "3000"
+      PG_POOL_MAX: "10"
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+
